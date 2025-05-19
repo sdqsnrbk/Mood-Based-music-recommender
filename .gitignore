@@ -4,6 +4,8 @@ venv1/
 venv/
 ENV/
 
+.streamlit/
+
 # Model Data
 bert (28 moods)/
 
