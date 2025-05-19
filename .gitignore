@@ -1,0 +1,28 @@
+# Python Virtual Environment
+venv1/
+*.venv
+venv/
+ENV/
+
+# Model Data
+bert (28 moods)/
+
+# IDE files
+.idea/
+
+# Python cache
+__pycache__/
+*.py[co]
+
+# Django specific
+*.log
+local_settings.py
+db.sqlite3
+*.sqlite3
+
+# Environment variables
+.env
+
+# Other
+*.DS_Store
+Thumbs.db

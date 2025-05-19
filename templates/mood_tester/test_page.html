@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mood Music Recommender</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f7f9fc; color: #333; display: flex; justify-content: center; align-items: flex-start; min-height: 90vh; padding-top: 20px;}
+        .container { max-width: 700px; width:100%; background: white; padding: 25px 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; text-align: center; margin-bottom: 25px; }
+        textarea {
+            width: calc(100% - 22px); /* Account for padding */
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #dfe6e9;
+            border-radius: 5px;
+            min-height: 80px;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button:hover { background-color: #2980b9; }
+        .result-section { margin-top: 25px; }
+        .result-box {
+            padding: 15px;
+            background-color: #ecf0f1;
+            border-radius: 5px;
+            margin-bottom:15px;
+            border-left: 5px solid #bdc3c7;
+        }
+        .result-box p { margin: 8px 0; font-size: 16px; }
+        .result-box strong { color: #2c3e50; }
+
+        .human-response-box {
+            padding: 15px;
+            background-color: #e8f4fd; /* Light blue background */
+            border-left: 5px solid #3498db; /* Blue accent border */
+            border-radius: 5px;
+            margin-bottom: 15px; /* Space below this box */
+        }
+        .human-response-box p {
+            margin: 0;
+            font-size: 16px;
+            line-height: 1.6;
+            color: #2980b9; /* Darker blue text for contrast */
+            font-style: italic;
+        }
+        .error { color: #e74c3c; font-weight: bold; margin-top: 15px; text-align: center; background-color: #fadbd8; padding: 10px; border-radius:5px; margin-bottom: 15px;}
+
+        /* Styles for Song Recommendations */
+        .song-recommendations { margin-top: 20px; }
+        .song-recommendations h2 { color: #34495e; margin-bottom: 15px; text-align: center; }
+        .song-list { list-style: none; padding: 0; }
+        .song-item {
+            /* display: flex; */ /* We'll remove flex here to allow player to stack normally */
+            /* align-items: center; */
+            background-color: #fff;
+            border: 1px solid #ecf0f1;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .song-header { /* New class to group image and initial details if needed for flex layout */
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px; /* Space before player */
+        }
+        .song-item img {
+            width: 80px;
+            height: 80px;
+            border-radius: 6px;
+            margin-right: 20px;
+            object-fit: cover;
+            flex-shrink: 0; /* Prevent image from shrinking */
+        }
+        .song-details { flex-grow: 1; }
+        .song-details h3 { margin: 0 0 5px 0; font-size: 1.2em; color: #2c3e50; }
+        .song-details p { margin: 3px 0; font-size: 0.95em; color: #7f8c8d; }
+        .song-details em { color: #95a5a6; }
+        .song-links a {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 6px 12px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 0.9em;
+            margin-right: 8px;
+            transition: opacity 0.2s ease;
+        }
+        .spotify-link { background-color: #1DB954; color: white; }
+        .preview-link { background-color: #f1c40f; color: #333; }
+        .song-links a:hover { opacity: 0.8; }
+        .no-songs { text-align: center; color: #7f8c8d; margin-top:15px;}
+
+        /* Styles from the snippet */
+        .song-item h4 { /* Assuming this was a typo in the snippet and meant for song titles (h3 in your code) */
+            margin-top: 0;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        .spotify-player-container {
+            margin-top: 15px; /* Increased margin for better spacing */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Mood Music Recommender</h1>
+
+        {% if error_message %}
+            <p class="error">{{ error_message }}</p>
+        {% endif %}
+
+        <form method="POST">
+            {% csrf_token %}
+            <label for="inputText" style="display:block; margin-bottom:8px; font-weight:bold;">How are you feeling today?</label>
+            <textarea name="inputText" id="inputText" rows="4" required placeholder="e.g., I had a wonderful day and feel super happy!">{{ input_text }}</textarea>
+            <button type="submit">Get Recommendations</button>
+        </form>
+
+        <div class="result-section">
+            {% if human_response %}
+                <div class="human-response-box">
+                    <p>{{ human_response }}</p>
+                </div>
+            {% endif %}
+
+            {% if predicted_mood_display and "error" not in predicted_mood_display|lower and "unavailable" not in predicted_mood_display|lower and "please enter" not in predicted_mood_display|lower %}
+                <div class="result-box">
+                    <p><strong>Detected Mood:</strong> {{ predicted_mood_display }}</p>
+                </div>
+            {% elif predicted_mood_display %}
+                 <div class="result-box">
+                     <p>{{ predicted_mood_display }}</p>
+                </div>
+            {% endif %}
+        </div>
+
+        {% comment %} Modified section for displaying songs and player {% endcomment %}
+        {% if recommended_songs %}
+        <div class="song-recommendations">
+            <h2>Your Personal Playlist</h2>
+            <ul class="song-list">
+                {% for song in recommended_songs %}
+                <li class="song-item">
+                    <div class="song-header">
+
+                        <div class="song-details">
+                            <h3>{{ song.track_name|default:"Unknown Track" }}</h3>
+                            <p><strong>Artist(s):</strong> {{ song.artists|default:"Unknown Artist" }}</p>
+                            <p><em>Album: {{ song.album_name|default:"Unknown Album" }}</em></p>
+                            <div class="song-links">
+                                {% if song.spotify_url %} {# Assuming you might add spotify_url to context later #}
+                                <a href="{{ song.spotify_url }}" target="_blank" class="spotify-link">Listen on Spotify</a>
+                                {% endif %}
+                                {% if song.preview_url %} {# Assuming you might add preview_url to context later #}
+                                <a href="{{ song.preview_url }}" target="_blank" class="preview-link">Preview Song</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    {% comment %} Spotify Player Integration from snippet {% endcomment %}
+                    {% if song.track_id %}
+                        <div class="spotify-player-container">
+                            <iframe title="Spotify Web Player for {{ song.track_name|default:'this track' }}"
+                                    style="border-radius:12px; width:100%; max-width:400px;"
+                                    src="https://open.spotify.com/embed/track/{{ song.track_id }}"
+                                    width="100%"
+                                    height="80"
+                                    frameBorder="0"
+                                    allowtransparency="true"
+                                    allow="encrypted-media; picture-in-picture"
+                                    loading="lazy">
+                            </iframe>
+                        </div>
+                        {% comment %} Optional: Display track ID for debugging {% endcomment %}
+                        {# <p style="font-size: 0.8em; color: #777;">Track ID: {{ song.track_id }}</p> #}
+                    {% else %}
+                        <p style="font-size: 0.9em; color: #888; margin-top:10px;"><em>Spotify player not available for this track (missing Track ID).</em></p>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% elif request.method == "POST" and not error_message and predicted_mood_display and "error" not in predicted_mood_display|lower and "unavailable" not in predicted_mood_display|lower %}
+             <div class="song-recommendations">
+                <p class="no-songs">Couldn't find specific songs for '{{ predicted_mood_display }}' with the current criteria. Try different wording!</p>
+            </div>
+        {% endif %}
+
+    </div>
+</body>
+</html>
