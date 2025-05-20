@@ -5,6 +5,7 @@ import zipfile
 import pandas as pd
 import torch
 import time
+import requests
 
 HF_TRANSFORMERS_AVAILABLE = False
 try:
