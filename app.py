@@ -135,16 +135,16 @@ def local_css():
     """, unsafe_allow_html=True)
 
 
-# --- BERT Model Functions ---
-def actual_bert_model_loader(model_path):
+# --- mbert Model Functions ---
+def actual_mbert_model_loader(model_path):
     if not HF_TRANSFORMERS_AVAILABLE:
         st.error(
-            "Cannot load BERT model: Transformers library is missing. Please add 'transformers' and 'torch' to your requirements.txt and restart.")
+            "Cannot load mbert model: Transformers library is missing. Please add 'transformers' and 'torch' to your requirements.txt and restart.")
         return None, None
     try:
         if not os.path.exists(model_path) or not os.path.isdir(model_path):
             st.error(
-                f"BERT Model path '{model_path}' does not exist or is not a directory. Check EXTRACTED_MODEL_FOLDER_NAME.")
+                f"mbert Model path '{model_path}' does not exist or is not a directory. Check EXTRACTED_MODEL_FOLDER_NAME.")
             return None, None
 
         st.write(f"Attempting to load tokenizer from: {model_path}")  # Use st.write for user-facing messages
@@ -153,16 +153,16 @@ def actual_bert_model_loader(model_path):
         model = AutoModelForSequenceClassification.from_pretrained(model_path)
 
         model.eval()
-        st.success("BERT Model and Tokenizer loaded successfully.")
+        st.success("mbert Model and Tokenizer loaded successfully.")
         return model, tokenizer
     except Exception as e:
-        st.error(f"Error loading BERT model/tokenizer from '{model_path}': {e}")
+        st.error(f"Error loading mbert model/tokenizer from '{model_path}': {e}")
         return None, None
 
 
 @st.cache_resource  # Cache the loaded model and tokenizer
-def get_bert_model_and_tokenizer():
-    """Downloads (if needed), extracts, and loads the BERT model."""
+def get_mbert_model_and_tokenizer():
+    """Downloads (if needed), extracts, and loads the mbert model."""
     # IMPORTANT: Ensure 'google_drive_model_zip_url' is set in your Streamlit secrets!
     # Create a file .streamlit/secrets.toml and add:
     # google_drive_model_zip_url = "YOUR_GOOGLE_DRIVE_FILE_ID_OR_SHAREABLE_LINK"
@@ -174,13 +174,13 @@ def get_bert_model_and_tokenizer():
 
     if not os.path.exists(PATH_TO_EXTRACTED_MODEL):
         os.makedirs(MODEL_DOWNLOAD_DIR, exist_ok=True)
-        local_zip_path = os.path.join(MODEL_DOWNLOAD_DIR, "bert_model_archive.zip")
+        local_zip_path = os.path.join(MODEL_DOWNLOAD_DIR, "mbert_model_archive.zip")
 
         progress_bar = st.progress(0)
         status_text = st.empty()
 
         try:
-            status_text.info(f"Downloading BERT model from Google Drive... (this can take a few minutes)")
+            status_text.info(f"Downloading mbert model from Google Drive... (this can take a few minutes)")
             print(f"Starting download from GDrive to {local_zip_path}")  # Keep console log for debugging
 
             # gdown needs a direct download link or file ID.
@@ -190,7 +190,7 @@ def get_bert_model_and_tokenizer():
 
             progress_bar.progress(50)  # Update progress
             print("Download finished.")
-            status_text.info(f"Extracting BERT model to '{MODEL_DOWNLOAD_DIR}'...")
+            status_text.info(f"Extracting mbert model to '{MODEL_DOWNLOAD_DIR}'...")
             print(f"Extracting {local_zip_path} to {MODEL_DOWNLOAD_DIR}")
             with zipfile.ZipFile(local_zip_path, 'r') as zip_ref:
                 zip_ref.extractall(MODEL_DOWNLOAD_DIR)
@@ -210,25 +210,25 @@ def get_bert_model_and_tokenizer():
                 return None, None
 
             progress_bar.progress(100)
-            status_text.success("BERT model downloaded and extracted!")
+            status_text.success("mbert model downloaded and extracted!")
             time.sleep(2)  # Give time for user to see success message
             status_text.empty()
             progress_bar.empty()
 
         except Exception as e:
-            st.error(f"Error during BERT model download or extraction: {e}")
+            st.error(f"Error during mbert model download or extraction: {e}")
             status_text.empty()
             progress_bar.empty()
             return None, None
     else:
-        st.info(f"BERT model folder found in local cache: {PATH_TO_EXTRACTED_MODEL}")
+        st.info(f"mbert model folder found in local cache: {PATH_TO_EXTRACTED_MODEL}")
 
-    return actual_bert_model_loader(PATH_TO_EXTRACTED_MODEL)
+    return actual_mbert_model_loader(PATH_TO_EXTRACTED_MODEL)
 
 
-def predict_emotions_with_bert(text_input, model, tokenizer):
+def predict_emotions_with_mbert(text_input, model, tokenizer):
     if not HF_TRANSFORMERS_AVAILABLE or model is None or tokenizer is None:
-        st.warning("BERT model not available for prediction.")
+        st.warning("mbert model not available for prediction.")
         return {}
     try:
         model.eval()  # Ensure model is in evaluation mode
@@ -249,7 +249,7 @@ def predict_emotions_with_bert(text_input, model, tokenizer):
         # Sort by score in descending order
         return dict(sorted(emotion_scores.items(), key=lambda item: item[1], reverse=True))
     except Exception as e:
-        st.error(f"Error during mood prediction with BERT: {e}")
+        st.error(f"Error during mood prediction with mbert: {e}")
         return {}
 
 
@@ -333,7 +333,7 @@ def recommend_songs(detected_emotions_scores, track_df, num_to_recommend=10):
     if not sorted_significant_moods:
         st.info("Moods are quite subtle or neutral. Showing some popular tracks from the database.")
         if 'popularity' in track_df.columns:
-            return track_df.sort_values(by=['popularity'], ascending=False).head(num_to_recommend), "Neutral/Subtle"
+            return track_df.sort_values(by=['popularity'], ascending=False).drop_duplicates().head(num_to_recommend), "Neutral/Subtle"
         else:
             return track_df.head(num_to_recommend), "Neutral/Subtle (no popularity)"
 
@@ -391,7 +391,7 @@ def recommend_songs(detected_emotions_scores, track_df, num_to_recommend=10):
     # Case 1: A specific mood match (single or multi) was found
     if not best_overall_match_df.empty:
         st.info(f"Recommending based on best specific mood match which found {len(best_overall_match_df)} track(s).")
-        return best_overall_match_df.sort_values(by=['popularity'], ascending=False).head(num_to_recommend).drop_duplicates(), primary_mood_for_filtering
+        return best_overall_match_df.sort_values(by=['popularity'], ascending=False).head(num_to_recommend), primary_mood_for_filtering
 
     # Case 2: No specific mood combination (even single primary mood) yielded any songs.
     # This implies primary_mood_for_filtering (if it existed) didn't match any songs when n_moods_to_match was 1.
@@ -460,7 +460,7 @@ st.markdown("<h1 id='mood-music-recommender'>✨ Mood Music Recommender ✨</h1>
 # Load resources (model and song data) - these will be cached
 # Display loading messages for resources
 with st.spinner("Initializing AI model and song database... This may take a moment on first run."):
-    bert_model, bert_tokenizer = get_bert_model_and_tokenizer() if HF_TRANSFORMERS_AVAILABLE else (None, None)
+    bert_model, bert_tokenizer = get_mbert_model_and_tokenizer() if HF_TRANSFORMERS_AVAILABLE else (None, None)
     song_database_df = load_song_data(DATA_FILE_PATH)
 
 # User input section
@@ -474,13 +474,13 @@ if st.button("Get Recommendations 🚀", type="primary", use_container_width=Tru
         st.warning("Please tell me how you're feeling!")
     elif HF_TRANSFORMERS_AVAILABLE and (bert_model is None or bert_tokenizer is None):
         st.error(
-            "BERT Model not loaded. Cannot get recommendations. Check error messages above and ensure Transformers library is installed and model downloaded.")
+            "mbert Model not loaded. Cannot get recommendations. Check error messages above and ensure Transformers library is installed and model downloaded.")
     elif song_database_df.empty:
         st.error(
             "Song database not loaded or empty. Cannot get recommendations. Check data file path and error messages above.")
     else:
         with st.spinner("Analyzing your mood and finding songs... 🎶"):
-            emotion_scores = predict_emotions_with_bert(user_text, bert_model, bert_tokenizer)
+            emotion_scores = predict_emotions_with_mbert(user_text, bert_model, bert_tokenizer)
 
             if not emotion_scores:  # Check if dictionary is empty (error during prediction)
                 st.error(
@@ -594,7 +594,7 @@ if st.button:  # if any button is clicked, set it to true
 st.sidebar.header("About")
 st.sidebar.info(
     "This app uses AI to understand your mood from your text input "
-    "and recommends songs from a predefined dataset. It features a BERT-based model "
+    "and recommends songs from a predefined dataset. It features a mbert-based model "
     "for mood analysis and can use Google's Gemini API for generating "
     "creative playlist descriptions."
 )
@@ -602,14 +602,14 @@ st.sidebar.markdown("---")
 st.sidebar.subheader("How it Works:")
 st.sidebar.markdown("""
 1.  **Enter Your Mood:** Type how you're feeling into the text box.
-2.  **AI Analysis:** A BERT model analyzes your text to identify up to 28 different emotions.
+2.  **AI Analysis:** A mbert model analyzes your text to identify up to 28 different emotions.
 3.  **Song Matching:** The app searches its music database for songs that match your detected primary and significant moods.
 4.  **Playlist & Message:** You get a list of recommended songs and a personalized message (if Gemini API is configured).
 """)
 st.sidebar.markdown("---")
 st.sidebar.subheader("Technical Details:")
 st.sidebar.markdown(f"""
--   **Mood Model:** BERT ({EXTRACTED_MODEL_FOLDER_NAME})
+-   **Mood Model:** mbert ({EXTRACTED_MODEL_FOLDER_NAME})
 -   **Song Data:** `updated_db.csv` ({len(song_database_df) if not song_database_df.empty else 'N/A'} tracks)
 -   **Transformers Lib:** {'✅ Available' if HF_TRANSFORMERS_AVAILABLE else '❌ Not Installed'}
 -   **Gemini API Lib:** {'✅ Available' if GOOGLE_GENAI_AVAILABLE else '⚠️ Not Installed (using fallback)'}
