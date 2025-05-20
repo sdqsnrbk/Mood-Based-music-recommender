@@ -151,33 +151,71 @@ def actual_mbert_model_loader(model_path):
 
 @st.cache_resource
 def get_mbert_model_and_tokenizer():
-    """Downloads (if needed), extracts, and loads the mbert model."""
-    model_zip_url_or_id = st.secrets.get("google_drive_model_zip_url")
-    if not model_zip_url_or_id:
-        st.error("Model URL/ID ('google_drive_model_zip_url') not found in Streamlit secrets! Cannot download model.")
-        st.info("Please create a file named .streamlit/secrets.toml in your app's root directory and add the key.")
+    """Downloads (if needed), extracts, and loads the mbert model using requests."""
+    model_zip_url = st.secrets.get("google_drive_model_zip_url")
+
+    st.info(f"DEBUG - Attempting to use this GDrive URL from secrets: '{model_zip_url}'")
+
+    if not model_zip_url:
+        st.error("Model URL ('google_drive_model_zip_url') not found in Streamlit secrets!")
         return None, None
 
     if not os.path.exists(PATH_TO_EXTRACTED_MODEL):
         os.makedirs(MODEL_DOWNLOAD_DIR, exist_ok=True)
-        local_zip_path = os.path.join(MODEL_DOWNLOAD_DIR, "mbert_model_archive.zip")
+        local_zip_path = os.path.join(MODEL_DOWNLOAD_DIR, "bert_model_archive.zip")
 
-        progress_bar = st.progress(0)
+        progress_bar = st.progress(0, text="Preparing to download model...")
         status_text = st.empty()
 
         try:
-            status_text.info(f"Downloading mbert model from Google Drive... (this can take a few minutes)")
-            print(f"Starting download from GDrive to {local_zip_path}")
+            status_text.info(f"Downloading mBERT model from Google Drive... (this can take a few minutes)")
+            print(f"Starting download using requests from: {model_zip_url} to {local_zip_path}")
 
-            gdown.download(id=model_zip_url_or_id, output=local_zip_path, quiet=False, fuzzy=True)
+            response = requests.get(model_zip_url, stream=True)
+            response.raise_for_status()
 
-            progress_bar.progress(50)
+            total_size = int(response.headers.get('content-length', 0))
+            bytes_downloaded = 0
+
+            with open(local_zip_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+                        bytes_downloaded += len(chunk)
+                        if total_size > 0:
+                            progress_percentage = min(100, int((bytes_downloaded / total_size) * 100))
+                            progress_bar.progress(progress_percentage,
+                                                  text=f"Downloading model: {progress_percentage}%")
+
+            if total_size > 0 and bytes_downloaded != total_size:
+                st.warning(
+                    f"Downloaded size ({bytes_downloaded}) does not match expected size ({total_size}). File might be incomplete.")
+
+
             print("Download finished.")
-            status_text.info(f"Extracting mbert model to '{MODEL_DOWNLOAD_DIR}'...")
+            status_text.info(f"Extracting mBERT model to '{MODEL_DOWNLOAD_DIR}'...")
             print(f"Extracting {local_zip_path} to {MODEL_DOWNLOAD_DIR}")
+
+            if os.path.exists(local_zip_path):
+                file_size = os.path.getsize(local_zip_path)
+                st.info(f"DEBUG - Downloaded file size: {file_size / (1024 * 1024):.2f} MB.")
+                if file_size < 100 * 1024:
+                    st.error(
+                        "Downloaded file is very small. It might be an error page from Google Drive instead of the zip file. Please verify the URL and sharing permissions on Google Drive.")
+                    os.remove(local_zip_path)
+                    status_text.empty()
+                    progress_bar.empty()
+                    return None, None
+            else:
+                st.error("Download failed, local zip file not found.")
+                status_text.empty()
+                progress_bar.empty()
+                return None, None
+
             with zipfile.ZipFile(local_zip_path, 'r') as zip_ref:
                 zip_ref.extractall(MODEL_DOWNLOAD_DIR)
-            progress_bar.progress(90)
+
+            progress_bar.progress(100, text="Extraction complete.")
             print("Extraction finished.")
 
             if os.path.exists(local_zip_path):
@@ -192,19 +230,35 @@ def get_mbert_model_and_tokenizer():
                 progress_bar.empty()
                 return None, None
 
-            progress_bar.progress(100)
-            status_text.success("mbert model downloaded and extracted!")
-            time.sleep(2)
+            status_text.success("mBERT model downloaded and extracted!")
+            time.sleep(1)
             status_text.empty()
             progress_bar.empty()
 
-        except Exception as e:
-            st.error(f"Error during mbert model download or extraction: {e}")
+        except requests.exceptions.RequestException as req_e:
+            st.error(f"HTTP Request error during model download: {req_e}")
+            st.error(
+                f"Please double-check the 'google_drive_model_zip_url' in your secrets and ensure the file is shared correctly ('Anyone with the link can view').")
             status_text.empty()
             progress_bar.empty()
+            if os.path.exists(local_zip_path): os.remove(local_zip_path)
+            return None, None
+        except zipfile.BadZipFile:
+            st.error(
+                "Downloaded file is not a valid zip file. This often means the download link didn't point to the actual zip file (e.g., it was an HTML error page from Google Drive).")
+            st.error(f"The file at '{local_zip_path}' could not be opened as a zip archive.")
+            status_text.empty()
+            progress_bar.empty()
+            if os.path.exists(local_zip_path): os.remove(local_zip_path)
+            return None, None
+        except Exception as e:
+            st.error(f"An unexpected error occurred during model download or extraction: {e}")
+            status_text.empty()
+            progress_bar.empty()
+            if os.path.exists(local_zip_path): os.remove(local_zip_path)
             return None, None
     else:
-        st.info(f"mbert model folder found in local cache: {PATH_TO_EXTRACTED_MODEL}")
+        st.info(f"mBERT model folder found in local cache: {PATH_TO_EXTRACTED_MODEL}")
 
     return actual_mbert_model_loader(PATH_TO_EXTRACTED_MODEL)
 
@@ -516,6 +570,7 @@ if "get_recs_clicked" not in st.session_state:
 if st.button:
     st.session_state.get_recs_clicked = True
 
+# --- Sidebar ---
 st.sidebar.header("About")
 st.sidebar.info(
     "This app uses AI to understand your mood from your text input "
