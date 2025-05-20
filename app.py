@@ -357,15 +357,10 @@ def recommend_songs(detected_emotions_scores, track_df, num_to_recommend=10):
             best_overall_match_df = current_filter_df.copy()
             st.info(f"Current best considered: {n_moods_to_match} mood(s) yielding {len(best_overall_match_df)} songs.")
 
-        if len(best_overall_match_df) >= 5:
-            st.info(
-                f"Sufficient match found ({len(best_overall_match_df)} songs >= 5) with {n_moods_to_match} mood(s). Using this.")
-            break
 
     print(f"Size of best_overall_match_df after mood filtering: {len(best_overall_match_df)}")
 
     if not best_overall_match_df.empty:
-        st.info(f"Recommending a random selection from {len(best_overall_match_df)} track(s) matching your mood.")
         df_to_sample = best_overall_match_df
         sample_n = min(num_to_recommend, len(df_to_sample))
         if sample_n > 0:
