@@ -298,11 +298,20 @@ def recommend_songs(detected_emotions_scores, track_df, num_to_recommend=10):
     primary_mood_for_filtering = list(sorted_significant_moods.keys())[0] if sorted_significant_moods else None
 
     if not sorted_significant_moods:
-        st.info("Moods are quite subtle or neutral. Showing some random tracks from the database.")
-        df_to_sample = track_df.drop_duplicates(subset=['track_name', 'artists'])
-        if not df_to_sample.empty:
-            sample_n = min(num_to_recommend, len(df_to_sample))
-            return df_to_sample.sample(n=sample_n, random_state=None).sort_values(by='popularity', ascending=False), "Neutral/Subtle"
+        st.info("Moods are quite subtle or neutral. Selecting random songs from the most popular tracks.")
+        unique_tracks_df = track_df.drop_duplicates(subset=['track_name', 'artists'])
+
+        df_to_sample_from = unique_tracks_df
+        if 'popularity' in unique_tracks_df.columns:
+            popular_tracks_df = unique_tracks_df.sort_values(by=['popularity'], ascending=False)
+            df_to_sample_from = popular_tracks_df.head(100)  # Get top 100 popular unique tracks
+
+        if not df_to_sample_from.empty:
+            sample_n = min(num_to_recommend, len(df_to_sample_from))
+            if sample_n > 0:
+                return df_to_sample_from.sample(n=sample_n, random_state=None), "Neutral/Subtle (Popular Sample)"
+            else:  # Should not happen if df_to_sample_from is not empty
+                return pd.DataFrame(), "Neutral/Subtle"
         else:
             return pd.DataFrame(), "Neutral/Subtle"
 
@@ -342,10 +351,18 @@ def recommend_songs(detected_emotions_scores, track_df, num_to_recommend=10):
 
         print(f"Found {len(current_filter_df)} songs matching {len(top_moods_labels)} moods: {top_moods_labels}.")
 
-        best_overall_match_df = current_filter_df
-        st.info(f"Prioritizing match with {len(top_moods_labels)} mood(s) yielding {len(best_overall_match_df)} songs.")
-        break
+        if best_overall_match_df.empty or (
+                len(current_filter_df) > len(best_overall_match_df) and len(best_overall_match_df) < 5) or (
+                len(current_filter_df) >= 5):
+            best_overall_match_df = current_filter_df.copy()
+            st.info(f"Current best considered: {n_moods_to_match} mood(s) yielding {len(best_overall_match_df)} songs.")
 
+        if len(best_overall_match_df) >= 5:
+            st.info(
+                f"Sufficient match found ({len(best_overall_match_df)} songs >= 5) with {n_moods_to_match} mood(s). Using this.")
+            break
+
+    print(f"Size of best_overall_match_df after mood filtering: {len(best_overall_match_df)}")
 
     if not best_overall_match_df.empty:
         st.info(f"Recommending a random selection from {len(best_overall_match_df)} track(s) matching your mood.")
