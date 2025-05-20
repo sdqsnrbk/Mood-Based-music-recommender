@@ -343,11 +343,11 @@ def recommend_songs(detected_emotions_scores, track_df, num_to_recommend=10):
 
     # Try matching multiple top moods, then fewer, down to one.
     # The goal is to find the most specific match that still yields a reasonable number of songs.
-    for n_moods_to_match in range(min(3, len(sorted_significant_moods)), 0, -1):
+    for n_moods_to_match in range(min(3, len(sorted_significant_moods)), 2, -1):
         top_moods_labels = list(sorted_significant_moods.keys())[:n_moods_to_match]
         print(f"Attempting to match top {len(top_moods_labels)} moods: {top_moods_labels}")
 
-        current_filter_df = track_df.copy()
+        current_filter_df = track_df.copy().drop_duplicates(subset=['track_name', 'artists'])
         possible_to_filter_this_iteration = True
         for mood_label in top_moods_labels:
             if mood_label in current_filter_df.columns:
@@ -391,15 +391,15 @@ def recommend_songs(detected_emotions_scores, track_df, num_to_recommend=10):
     # Case 1: A specific mood match (single or multi) was found
     if not best_overall_match_df.empty:
         st.info(f"Recommending based on best specific mood match which found {len(best_overall_match_df)} track(s).")
-        return best_overall_match_df.sort_values(by=['popularity'], ascending=False).drop_duplicates().head(num_to_recommend), primary_mood_for_filtering
+        return best_overall_match_df.drop_duplicates(subset=['track_name', 'artists']).sort_values(by=['popularity'], ascending=False).head(num_to_recommend), primary_mood_for_filtering
 
     # Case 2: No specific mood combination (even single primary mood) yielded any songs.
     # This implies primary_mood_for_filtering (if it existed) didn't match any songs when n_moods_to_match was 1.
     st.info("No specific mood matches found after trying various combinations. Showing some generally popular tracks.")
     if 'popularity' in track_df.columns:
-        return track_df.sort_values(by=['popularity'], ascending=False).drop_duplicates().head(num_to_recommend), "Popular Fallback"
+        return track_df.drop_duplicates(subset=['track_name', 'artists']).sort_values(by=['popularity'], ascending=False).head(num_to_recommend), "Popular Fallback"
     else:
-        return track_df.drop_duplicates().head(num_to_recommend), "Popular Fallback (no popularity)"
+        return track_df.drop_duplicates(subset=['track_name', 'artists']).head(num_to_recommend), "Popular Fallback (no popularity)"
 
 
 # --- Track Data Loading Function ---
