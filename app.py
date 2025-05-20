@@ -302,7 +302,7 @@ def recommend_songs(detected_emotions_scores, track_df, num_to_recommend=10):
         df_to_sample = track_df.drop_duplicates(subset=['track_name', 'artists'])
         if not df_to_sample.empty:
             sample_n = min(num_to_recommend, len(df_to_sample))
-            return df_to_sample.sample(n=sample_n, random_state=None), "Neutral/Subtle"
+            return df_to_sample.sample(n=sample_n, random_state=None).sort_values(by='popularity', ascending=False), "Neutral/Subtle"
         else:
             return pd.DataFrame(), "Neutral/Subtle"
 
@@ -352,13 +352,13 @@ def recommend_songs(detected_emotions_scores, track_df, num_to_recommend=10):
         df_to_sample = best_overall_match_df
         sample_n = min(num_to_recommend, len(df_to_sample))
         if sample_n > 0:
-            return df_to_sample.sample(n=sample_n, random_state=None), primary_mood_for_filtering
+            return df_to_sample.sample(n=sample_n, random_state=None).sort_values(by='popularity', ascending=False), primary_mood_for_filtering
 
     st.info("No specific mood matches found after trying various combinations. Showing some random tracks from the database.")
     df_to_sample = track_df.drop_duplicates(subset=['track_name', 'artists'])
     if not df_to_sample.empty:
         sample_n = min(num_to_recommend, len(df_to_sample))
-        return df_to_sample.sample(n=sample_n, random_state=None), "Popular Fallback (Randomized)"
+        return df_to_sample.sample(n=sample_n, random_state=None).sort_values(by='popularity', ascending=False), "Popular Fallback (Randomized)"
     else:
         return pd.DataFrame(), "Popular Fallback (Randomized)"
 
