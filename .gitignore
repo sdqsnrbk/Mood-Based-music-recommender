@@ -1,30 +1,63 @@
-# Python Virtual Environment
+# Python Virtual Environments
 venv/
 venv1/
 *.venv
 ENV/
+*.env
 
-# Model Data (the downloaded cache, not your source model if it were local)
+# Streamlit secrets
+.streamlit/
+
+# Downloaded Model Cache
 downloaded_model_cache/
-# If you had a local model folder you didn't want to commit, e.g., bert(28 moods)/
 
-# IDE files
+# Source Model Data (if you had a local copy you didn't want to commit)
+# Use the name of the folder as it would appear in your project root
+# e.g., bert(28 moods)/ if that was a source folder.
+# Since your model is downloaded, downloaded_model_cache/ is the more critical one.
+
+# IDE specific files
 .idea/
+*.vscode/
 
-# Python cache
+# Python cache files
 __pycache__/
 *.py[co]
+*.pyo
+*.pyd
 
-# Django specific (if relevant, db.sqlite3 is good to ignore generally)
+# Django specific
 *.log
 local_settings.py
-# db.sqlite3 # You can decide if you want to commit your dev db
-# *.sqlite3
+db.sqlite3
+*.sqlite3
+migrations/ # Typically, you commit migrations, but if you want to ignore them for some reason.
+            # For a deployable app, usually you *do* commit migrations.
+            # I'll comment this out as it's usually committed.
+# migrations/
 
-# Environment variables & Streamlit Secrets
+# Environment variables file (if you use one outside .streamlit/)
 .env
-.streamlit/  # This will ignore the entire .streamlit folder including secrets.toml
 
-# Other
+# OS-specific files
 *.DS_Store
 Thumbs.db
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Test outputs
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+nosetests.xml
+coverage.xml
+*.cover
+*.hypothesis/
