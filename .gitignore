@@ -1,13 +1,12 @@
 # Python Virtual Environment
+venv/
 venv1/
 *.venv
-venv/
 ENV/
 
-.streamlit/
-
-# Model Data
-bert (28 moods)/
+# Model Data (the downloaded cache, not your source model if it were local)
+downloaded_model_cache/
+# If you had a local model folder you didn't want to commit, e.g., bert(28 moods)/
 
 # IDE files
 .idea/
@@ -16,14 +15,15 @@ bert (28 moods)/
 __pycache__/
 *.py[co]
 
-# Django specific
+# Django specific (if relevant, db.sqlite3 is good to ignore generally)
 *.log
 local_settings.py
-db.sqlite3
-*.sqlite3
+# db.sqlite3 # You can decide if you want to commit your dev db
+# *.sqlite3
 
-# Environment variables
+# Environment variables & Streamlit Secrets
 .env
+.streamlit/  # This will ignore the entire .streamlit folder including secrets.toml
 
 # Other
 *.DS_Store
