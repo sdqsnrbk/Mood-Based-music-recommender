@@ -235,14 +235,6 @@ def get_mbert_model_and_tokenizer():
             status_text.empty()
             progress_bar.empty()
 
-        except requests.exceptions.RequestException as req_e:
-            st.error(f"HTTP Request error during model download: {req_e}")
-            st.error(
-                f"Please double-check the 'google_drive_model_zip_url' in your secrets and ensure the file is shared correctly ('Anyone with the link can view').")
-            status_text.empty()
-            progress_bar.empty()
-            if os.path.exists(local_zip_path): os.remove(local_zip_path)
-            return None, None
         except zipfile.BadZipFile:
             st.error(
                 "Downloaded file is not a valid zip file. This often means the download link didn't point to the actual zip file (e.g., it was an HTML error page from Google Drive).")
