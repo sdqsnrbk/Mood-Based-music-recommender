@@ -391,15 +391,15 @@ def recommend_songs(detected_emotions_scores, track_df, num_to_recommend=10):
     # Case 1: A specific mood match (single or multi) was found
     if not best_overall_match_df.empty:
         st.info(f"Recommending based on best specific mood match which found {len(best_overall_match_df)} track(s).")
-        return best_overall_match_df.sort_values(by=['popularity'], ascending=False).head(num_to_recommend), primary_mood_for_filtering
+        return best_overall_match_df.sort_values(by=['popularity'], ascending=False).drop_duplicates().head(num_to_recommend), primary_mood_for_filtering
 
     # Case 2: No specific mood combination (even single primary mood) yielded any songs.
     # This implies primary_mood_for_filtering (if it existed) didn't match any songs when n_moods_to_match was 1.
     st.info("No specific mood matches found after trying various combinations. Showing some generally popular tracks.")
     if 'popularity' in track_df.columns:
-        return track_df.sort_values(by=['popularity'], ascending=False).head(num_to_recommend), "Popular Fallback"
+        return track_df.sort_values(by=['popularity'], ascending=False).drop_duplicates().head(num_to_recommend), "Popular Fallback"
     else:
-        return track_df.head(num_to_recommend), "Popular Fallback (no popularity)"
+        return track_df.drop_duplicates().head(num_to_recommend), "Popular Fallback (no popularity)"
 
 
 # --- Track Data Loading Function ---
