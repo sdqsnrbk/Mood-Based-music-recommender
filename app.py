@@ -152,14 +152,6 @@ def actual_bert_model_loader(model_path):
         st.write(f"Attempting to load model from: {model_path}")
         model = AutoModelForSequenceClassification.from_pretrained(model_path)
 
-        # Streamlit Cloud free tier is CPU only. This check is for local GPU.
-        # No need to move to CUDA explicitly if not available, PyTorch handles it.
-        if torch.cuda.is_available():
-            # model.to('cuda') # Not strictly necessary to move manually for inference if inputs are on correct device
-            st.info("CUDA (GPU) is available locally. Model will use GPU if inputs are on CUDA.")
-        else:
-            st.info("CUDA not available. BERT Model running on CPU.")
-
         model.eval()
         st.success("BERT Model and Tokenizer loaded successfully.")
         return model, tokenizer
@@ -314,7 +306,7 @@ def generate_gemini_description(primary_mood, num_songs):
 
 
 # --- Music Recommendation Logic ---
-def recommend_songs(detected_emotions_scores, track_df, num_to_recommend=5):
+def recommend_songs(detected_emotions_scores, track_df, num_to_recommend=10):
     # Ensure EMOTION_CLASSES is accessible globally.
     # If it's not defined in the scope where this app runs, this will cause a NameError.
     # This change assumes EMOTION_CLASSES is available globally as it was in the full script.
@@ -330,7 +322,7 @@ def recommend_songs(detected_emotions_scores, track_df, num_to_recommend=5):
 
     # Filter for moods with score > 0.5 and sort them
     significant_moods = {
-        mood: score for mood, score in detected_emotions_scores.items() if score > 0.5 and mood in EMOTION_CLASSES
+        mood: score for mood, score in detected_emotions_scores.items() if score > 0.6 and mood in EMOTION_CLASSES
     }
     # Sort significant moods by score, highest first
     sorted_significant_moods = dict(sorted(significant_moods.items(), key=lambda item: item[1], reverse=True))
@@ -399,8 +391,7 @@ def recommend_songs(detected_emotions_scores, track_df, num_to_recommend=5):
     # Case 1: A specific mood match (single or multi) was found
     if not best_overall_match_df.empty:
         st.info(f"Recommending based on best specific mood match which found {len(best_overall_match_df)} track(s).")
-        return best_overall_match_df.sort_values(by=['popularity'], ascending=False).head(
-            num_to_recommend), primary_mood_for_filtering
+        return best_overall_match_df.sort_values(by=['popularity'], ascending=False).head(num_to_recommend).drop_duplicates(), primary_mood_for_filtering
 
     # Case 2: No specific mood combination (even single primary mood) yielded any songs.
     # This implies primary_mood_for_filtering (if it existed) didn't match any songs when n_moods_to_match was 1.
@@ -476,8 +467,7 @@ with st.spinner("Initializing AI model and song database... This may take a mome
 st.markdown(
     "<label for='mood_input_area' style='display:block; margin-bottom:8px; font-weight:bold; font-size: 1.1em;'>How are you feeling today?</label>",
     unsafe_allow_html=True)
-user_text = st.text_area("", placeholder="e.g., I am feeling ecstatic and ready to party!", height=100,
-                         key="mood_input_area", label_visibility="collapsed")
+user_text = st.text_area("", placeholder="e.g., I am feeling ecstatic and ready to party!", height=100, key="mood_input_area", label_visibility="collapsed")
 
 if st.button("Get Recommendations 🚀", type="primary", use_container_width=True):
     if not user_text.strip():  # Check if input is empty or just whitespace
@@ -523,53 +513,70 @@ if st.button("Get Recommendations 🚀", type="primary", use_container_width=Tru
                     significant_found = False
                     # Iterate through original emotion_scores to show all significant ones
                     for mood, score in emotion_scores.items():
-                        if score > 0.5 and mood in EMOTION_CLASSES:  # Ensure mood is valid
+                        if score > 0.7 and mood in EMOTION_CLASSES:  # Ensure mood is valid
                             st.markdown(f"<p>{mood.capitalize()}: ({score:.2f})</p>", unsafe_allow_html=True)
                             significant_found = True
                     if not significant_found:
                         st.markdown(
-                            "<p>No specific strong moods detected (above 0.5 threshold). The primary mood or popular tracks were used.</p>",
+                            "<p>No specific strong moods detected (above 0.7 threshold). The primary mood or popular tracks were used.</p>",
                             unsafe_allow_html=True)
 
                 st.markdown("<h3 class='song-recommendations-title'>Your Personalized Playlist:</h3>",
                             unsafe_allow_html=True)
+
                 if not recommended_songs_df.empty:
-                    # Ensure columns exist before trying to display them
-                    display_cols = ['track_name', 'artists', 'album_name', 'popularity']  # Added popularity
+
+                    display_cols = ['track_name', 'artists', 'album_name', 'popularity']
                     actual_display_cols = [col for col in display_cols if col in recommended_songs_df.columns]
+                    st.dataframe(
+                        recommended_songs_df[actual_display_cols] if actual_display_cols else recommended_songs_df,
+                        use_container_width=True)
 
-                    if actual_display_cols:
-                        st.dataframe(recommended_songs_df[actual_display_cols], use_container_width=True)
-                    else:
-                        st.warning(
-                            "Recommended tracks DataFrame is missing expected columns (track_name, artists, album_name). Showing raw data.")
-                        st.dataframe(recommended_songs_df, use_container_width=True)
+                    # --- MODIFIED SPOTIFY PLAYER SECTION TO LOOP THROUGH SONGS ---
+                    st.markdown("---")
+                    st.markdown("<h4>🎧 Play Recommended Tracks:</h4>", unsafe_allow_html=True)
 
-                    # Spotify Player
-                    if 'track_id' in recommended_songs_df.columns and pd.notna(
-                            recommended_songs_df.iloc[0]['track_id']):
-                        first_track_id = recommended_songs_df.iloc[0]['track_id']
-                        # CORRECTED Spotify embed URL
-                        spotify_embed_url = f"https://open.spotify.com/embed/track/{first_track_id}"
-                        st.markdown("---")  # Visual separator
-                        st.markdown("<h4>🎧 Play a Sample Track:</h4>", unsafe_allow_html=True)
-                        st.markdown(f"""
-                        <div class='spotify-player-container'>
-                            <iframe title="Spotify Web Player"
-                                    style="border-radius:12px; width:100%;"
-                                    src="{spotify_embed_url}"
-                                    height="80" 
-                                    frameBorder="0" 
-                                    allowfullscreen="" 
-                                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
-                                    loading="lazy">
-                            </iframe>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    else:
-                        st.info("Could not find a 'track_id' for the top recommended song to embed Spotify player.")
+                    player_displayed_count = 0
+                    # Loop through the recommended_songs_df (which now contains up to 10 songs)
+                    for index, row in recommended_songs_df.iterrows():
+                        # Check if 'track_id' column exists and the value is not NaN
+                        if 'track_id' in row and pd.notna(row['track_id']):
+                            track_id = row['track_id']
+                            track_name = row.get('track_name', 'Unknown Track')
+                            artists = row.get('artists', 'Unknown Artist')
+
+                            # Using the Spotify embed URL format from your original code.
+                            # Note: Standard Spotify embed URL is typically: f"https://open.spotify.com/embed/track/{track_id}"
+                            spotify_embed_url = f"https://open.spotify.com/embed/track/{track_id}"
+
+
+
+                            # Embed Spotify player
+                            st.markdown(f"""
+                                            <div class='spotify-player-container'>
+                                                <iframe title="Spotify Web Player for {track_name}"
+                                                        style="border-radius:12px; width:100%;"
+                                                        src="{spotify_embed_url}"
+                                                        height="80" 
+                                                        frameBorder="0" 
+                                                        allowfullscreen="" 
+                                                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                                                        loading="lazy">
+                                                </iframe>
+                                            </div>
+                                            """, unsafe_allow_html=True)
+                            player_displayed_count += 1
+                        # else:
+                        #     # Optional: Log or inform if a track_id is missing for a recommended song
+                        #     print(f"Skipping player for a song due to missing track_id: {row.get('track_name', 'N/A')}")
+
+                    if player_displayed_count == 0:
+                        st.info(
+                            "Could not find 'track_id' for any of the top recommended songs to embed Spotify players.")
+                    # --- END OF MODIFIED SPOTIFY PLAYER SECTION ---
                 else:
                     st.info("No tracks found matching your current mood based on the available data.")
+
 else:
     # Initial state message if resources are still loading or failed
     if (HF_TRANSFORMERS_AVAILABLE and (bert_model is None or bert_tokenizer is None) and not st.session_state.get(
