@@ -63,7 +63,7 @@ def get_model():
 
     if not model_zip_url_from_secrets:
         st.error("Model URL ('google_drive_model_zip_url') not found in Streamlit secrets!")
-        st.info("Please add it to your .streamlit/secrets.toml locally, or in the Streamlit Cloud deployment settings.")
+        st.info("Please add it to your .streamlit/secrets.toml.backup locally, or in the Streamlit Cloud deployment settings.")
         return None
 
     # Check if the *extracted model folder* already exists
