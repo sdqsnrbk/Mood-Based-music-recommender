@@ -3,10 +3,9 @@ from django.shortcuts import render
 from django.conf import settings
 import os
 import random
-import pandas as pd  # Added for DataFrame operations
-import torch  # Already imported but good to note for predict_mood
+import pandas as pd
+import torch
 
-# --- Hugging Face Transformers (for mood detection) ---
 try:
     from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
