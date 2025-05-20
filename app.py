@@ -299,7 +299,9 @@ def recommend_songs(detected_emotions_scores, track_df, num_to_recommend=10):
 
     if not sorted_significant_moods:
         st.info("Moods are quite subtle or neutral. Showing some popular tracks from the database.")
+        df_to_sample = track_df.drop_duplicates(subset=['track_name', 'artists'])
         if 'popularity' in track_df.columns:
+            sample_n = min(num_to_recommend, len(df_to_sample))
             return track_df.sort_values(by=['popularity'], ascending=False).drop_duplicates().head(num_to_recommend), "Neutral/Subtle"
         else:
             return track_df.head(num_to_recommend), "Neutral/Subtle (no popularity)"
