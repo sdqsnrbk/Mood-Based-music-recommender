@@ -308,7 +308,7 @@ def recommend_songs(detected_emotions_scores, track_df, num_to_recommend=10):
 
     best_overall_match_df = pd.DataFrame()
 
-    for n_moods_to_match in range(min(3, len(sorted_significant_moods)), 2, -1):
+    for n_moods_to_match in range(min(3, len(sorted_significant_moods)), 0, -1):
         top_moods_labels = list(sorted_significant_moods.keys())[:n_moods_to_match]
         print(f"Attempting to match top {len(top_moods_labels)} moods: {top_moods_labels}")
 
